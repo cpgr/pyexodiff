@@ -93,6 +93,10 @@ def exodiff(f1, f2, rtol, atol):
             if not np.allclose(v[:], rootgrp2.variables[k][:], rtol = rtol, atol = atol):
                 raise Exception('Exodus files are different')
 
+    # Finally, close each of the files
+    rootgrp1.close()
+    rootgrp2.close()
+
     return True
 
 if __name__ == '__main__':
