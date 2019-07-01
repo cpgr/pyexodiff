@@ -44,58 +44,53 @@ def exodiff(f1, f2, rtol, atol):
     '''
 
     # Open each of the files for reading
-    rootgrp1 = Dataset(f1, 'r')
-    rootgrp2 = Dataset(f2, 'r')
+    with Dataset(f1, 'r') as rootgrp1, Dataset(f2, 'r') as rootgrp2:
 
-    # Each Exodus II file has two parts that need to be checked.
-    # 1) The dimensions (where arrays sizes are defined)
-    # 2) The variables (where the arrays are contained)
-    #
-    # To determine if the Exodus II files are identical, both need to
-    # be checked
+        # Each Exodus II file has two parts that need to be checked.
+        # 1) The dimensions (where arrays sizes are defined)
+        # 2) The variables (where the arrays are contained)
+        #
+        # To determine if the Exodus II files are identical, both need to
+        # be checked
 
-    # Check that both files have identical dimensions for the important features
-    # of the Exodus II file (such as model dimension, number of elements, etc).
-    # Some of the values in this part of the file specify the length of strings.
-    # We do not require that these are identical to declare that the two Exodus II
-    # files are the same. The string length dimensions that we do not check are:
-    string_lengths = ['len_name', 'len_line']
+        # Check that both files have identical dimensions for the important features
+        # of the Exodus II file (such as model dimension, number of elements, etc).
+        # Some of the values in this part of the file specify the length of strings.
+        # We do not require that these are identical to declare that the two Exodus II
+        # files are the same. The string length dimensions that we do not check are:
+        string_lengths = ['len_name', 'len_line']
 
-    for k, v in rootgrp1.dimensions.items():
-        if k not in string_lengths:
-            if v.size != rootgrp2.dimensions[k].size:
-                raise Exception('Exodus files are different')
+        for k, v in rootgrp1.dimensions.items():
+            if k not in string_lengths:
+                if v.size != rootgrp2.dimensions[k].size:
+                    raise Exception('Exodus files are different')
 
-    # If the dimensions are identical, then check the variables.
-    # Check that both files have the identical keys
-    if len(set(rootgrp1.variables.keys()) - set(rootgrp2.variables.keys())) != 0:
-        raise Exception('Exodus files are different')
+        # If the dimensions are identical, then check the variables.
+        # Check that both files have the identical keys
+        if len(set(rootgrp1.variables.keys()) - set(rootgrp2.variables.keys())) != 0:
+            raise Exception('Exodus files are different')
 
-    for k, v in rootgrp1.variables.items():
-        if v[:].dtype.type is np.string_:
-            # String arrays may be different lengths, but the names must be equal
-            # when the individual characters are joined
-            # Form an array of strings from array of characters
-            v.set_auto_mask(False)
-            s1 = [b"".join(c).decode("UTF-8").lower() for c in v[:]]
+        for k, v in rootgrp1.variables.items():
+            if v[:].dtype.type is np.string_:
+                # String arrays may be different lengths, but the names must be equal
+                # when the individual characters are joined
+                # Form an array of strings from array of characters
+                v.set_auto_mask(False)
+                s1 = [b"".join(c).decode("UTF-8").lower() for c in v[:]]
 
-            # Form an array of strings from array of characters for the second file
-            arr2 = rootgrp2.variables[k]
-            arr2.set_auto_mask(False)
-            s2 = [b"".join(c).decode("UTF-8").lower() for c in arr2[:]]
+                # Form an array of strings from array of characters for the second file
+                arr2 = rootgrp2.variables[k]
+                arr2.set_auto_mask(False)
+                s2 = [b"".join(c).decode("UTF-8").lower() for c in arr2[:]]
 
-            # Check if the arrays of strings are identical
-            if not np.array_equal(np.sort(s1), np.sort(s2)):
-                raise Exception('Exodus files are different')
-        else:
-            # If the values are floats, then use np.allclose to check if the arrays
-            # are equivalent within the specified tolerances
-            if not np.allclose(v[:], rootgrp2.variables[k][:], rtol = rtol, atol = atol):
-                raise Exception('Exodus files are different')
-
-    # Finally, close each of the files
-    rootgrp1.close()
-    rootgrp2.close()
+                # Check if the arrays of strings are identical
+                if not np.array_equal(np.sort(s1), np.sort(s2)):
+                    raise Exception('Exodus files are different')
+            else:
+                # If the values are floats, then use np.allclose to check if the arrays
+                # are equivalent within the specified tolerances
+                if not np.allclose(v[:], rootgrp2.variables[k][:], rtol = rtol, atol = atol):
+                    raise Exception('Exodus files are different')
 
     return True
 
