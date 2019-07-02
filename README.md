@@ -58,29 +58,27 @@ New tests can be added anywhere within the `test` directory. The test harness re
 The `tests` file syntax is basic YAML, and looks like:
 ```yml
 simple_cube:
-  file: simple_cube.e
-  type: exodiff
-  gold: simple_cube.e
+  file1: simple_cube.e
+  file2: simple_cube.e
 ```
 In this example, the test harness will run
 ```bash
-pyexodiff simple_cube.e gold/simple_cube.e
+pyexodiff simple_cube.e simple_cube.e
 ```
 and determine whether the two files are identical.
 
 The test harness can also test for expected error messages. For example, the following block in a `tests` file
 ```yml
 simple_cube_missing_prop:
-  type: exodiff
-  file: simple_cube.e
-  gold: simple_cube_missing_prop.e
-  expected_error: Exodus files are different
+  file1: simple_cube.e
+  file2: simple_cube_missing_prop.e
+  expected_error: variable poro not in both files
 ```
 will run
 ```bash
-pyexodiff simple_cube.e gold/simple_cube_missing_prop.e
+pyexodiff simple_cube.e simple_cube_missing_prop.e
 ```
-and then check that the error message contains the string `No SPECGRID data found`.
+and then check that the error message contains the string `variable poro not in both files`.
 
 Each `tests` files can contain multiple individual tests. When pytest runs the test suite, the top-level label for each individual test in the `tests` file (for example, the labels `simple_cube` and `missing_specgrid` in the above examples) will be printed to the commandline, along with the status of each test run.
 
