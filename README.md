@@ -11,16 +11,24 @@ whether they are identical. It is intended as a python replacement of the [Exodi
 
 - numpy
 - netCDF4
+- argparse
 
-These may typically already installed, but if not, can be installed using `pip`,
+These can be installed using `pip`,
 ```bash
 pip install numpy
 ```
+for example.
 
-An additional python package, `pytest`, is required to run the test script. Again, this can be installed using
+Two additional python package are required to run the test script:
+
+- pytest
+- pyYAML
+
+Again, these can be installed using
 ```bash
 pip install pytest
 ```
+for example.
 
 ## Usage
 
@@ -30,21 +38,81 @@ pip install pytest
 ./pyexodiff.py file1 file2
 ```
 
+If the two Exodus II files are identical, `pyexodiff` reports that they are the same:
+```bash
+$ pyexodiff.py test/simple_cube.e test/simple_cube.e
+
+pyexodiff: files are identical
+```
+
+If the files are different, however, `pyexodiff` will report that they are not identical and will provide a brief summary of the differences.
+
+For example, if the dimensions of the Exodus II files are different, then `pyexodiff` will report the difference:
+```bash
+$  pyexodiff.py test/simple_cube.e test/simple_cube_missing_prop.e
+
+pyexodiff: difference summary:
+
+Dimensions:
+    num_elem_var is different: file1 size is 6; file2 size is 5
+    num_sset_var is different: file1 size is 6; file2 size is 5
+  Variables:
+      name_elem_var is different: variable poro not in both files
+      name_sset_var is different: variable poro not in both files
+
+pyexodiff: files are different
+```
+
+If the variables of both files are not equal (to within the given tolerances), then `pyexodiff` will print out the maximum difference for each variable that is different as well as its position (node or element id):
+
+```bash
+$ pyexodiff.py test/simple_cube.e test/simple_cube_incorrect_coordx.e
+
+pyexodiff: difference summary:
+
+Variables:
+    coordx is different:
+      max absolute diff 1.0000e+00 at position 12
+      max relative diff 6.6667e-01 at position 12
+
+pyexodiff: files are different
+```
+
 `pyexodiff` can also be used as a module in a python script using
 
 ```python
 from pyexodiff import exodiff
+
+diff = exodiff(file1, file2, atol, rtol)
 ```
-for example. In this case, the `pyexodiff` repository should be added to the `PYTHONPATH`
+to return a dictionary of the differences.
+
+In this case, the `pyexodiff` repository should be added to the `PYTHONPATH`
 environment variable
 ```bash
 export PYTHONPATH=$PYTHONPATH:/path/to/pyexodiff
 ```
 
-
 ## Commandline options
 
+Some parameters can be overwritten using the commandline options.
 
+```bash
+$ pyexodiff.py --help
+
+usage: pyexodiff.py [-h] [--rtol RTOL] [--atol ATOL] file1 file2
+
+Compares two Exodus II files
+
+positional arguments:
+  file1
+  file2
+
+optional arguments:
+  -h, --help   show this help message and exit
+  --rtol RTOL  Relative tolerance (default: 1e-06)
+  --atol ATOL  Absolute tolerance (default: 1e-06)
+```
 
 ## Test suite
 
