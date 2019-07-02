@@ -1,10 +1,13 @@
 simple_cube:
-  type: exodiff
-  file: simple_cube.e
-  gold: simple_cube.e
+  file1: simple_cube.e
+  file2: simple_cube.e
 
 simple_cube_missing_prop:
-  type: exodiff
-  file: simple_cube.e
-  gold: simple_cube_missing_prop.e
-  expected_error: Exodus files are different
+  file1: simple_cube.e
+  file2: simple_cube_missing_prop.e
+  expected_error: variable poro not in both files
+
+simple_cube_incorrect_coordx:
+  file1: simple_cube.e
+  file2: simple_cube_incorrect_coordx.e
+  expected_error: coordx is different
