@@ -11,9 +11,9 @@ def get_parser():
     parser.add_argument('file1')
     parser.add_argument('file2')
     parser.add_argument('--rtol', default = 1e-6, dest = 'rtol', type = float,
-         help = 'Relative tolerance')
+         help = 'Relative tolerance (default: %(default)s)')
     parser.add_argument('--atol', default = 1e-6, dest = 'atol', type = float,
-         help = 'Absolute tolerance')
+         help = 'Absolute tolerance (default: %(default)s)')
 
     return parser
 
@@ -28,7 +28,7 @@ def main():
     diff = exodiff(args.file1, args.file2, args.rtol, args.atol)
 
     # If diff is not empty, then there are differences
-    if diff['dimensions'] or diff['variables']:
+    if diff['dimensions'] or diff['variables']['names'] or diff['variables']['values']:
         printDiff(diff)
         print('\npyexodiff: files are different')
 
@@ -54,6 +54,8 @@ def exodiff(f1, f2, rtol, atol):
     diff = {}
     diff['dimensions'] = {}
     diff['variables'] = {}
+    diff['variables']['names'] = {}
+    diff['variables']['values'] = {}
 
     # Open each of the files for reading
     with Dataset(f1, 'r') as rootgrp1, Dataset(f2, 'r') as rootgrp2:
@@ -77,7 +79,7 @@ def exodiff(f1, f2, rtol, atol):
                 if v.size != rootgrp2.dimensions[k].size:
                     diff['dimensions'][k] = [v.size, rootgrp2.dimensions[k].size]
 
-        # If the dimensions are identical, then check the variables.
+        # Now check the variables.
         for k, v in rootgrp1.variables.items():
             if v[:].dtype.type is np.string_:
                 # String arrays may be different lengths, but the names must be equal
@@ -92,9 +94,7 @@ def exodiff(f1, f2, rtol, atol):
                 s2 = [b"".join(c).decode("UTF-8").lower() for c in arr2[:]]
                 # Check if the arrays of strings are identical
                 if not np.array_equal(np.sort(s1), np.sort(s2)):
-                    diff['variables']['names'] = {}
                     diff['variables']['names'][k] = np.array(list((set(s1)^set(s2))))
-                    return diff
 
             else:
                 # If the values are floats, then use np.allclose to check if the arrays
@@ -107,7 +107,6 @@ def exodiff(f1, f2, rtol, atol):
                         rel_diff = np.abs(np.divide(v[:] - rootgrp2.variables[k][:], v[:], where=v[:]!=0))
                         max_rel_diff = np.max(rel_diff)
                         max_rel_diff_pos = np.where(rel_diff == rel_diff.max())
-                        diff['variables']['values'] = {}
                         diff['variables']['values'][k] = {}
                         diff['variables']['values'][k]['max_abs_diff'] = max_abs_diff
                         diff['variables']['values'][k]['max_abs_diff_pos'] = max_abs_diff_pos
@@ -130,22 +129,24 @@ def printDiff(diff):
 
     # Print out summary of differences in the variables dict
     if diff['variables']:
-        print('Variables')
+        print('Variables:')
 
         # If the difference is in the names, print out all the differences and return
-        if 'names' in diff['variables'].keys():
+        if diff['variables']['names']:
             for k, v in diff['variables']['names'].items():
-                if v.dtype.type is np.string_:
-                    for vi in v:
-                        print('{}{} is different: variable {} not in both files'.format(indent, k, vi))
-                        return
+                for vi in v:
+                    print('{}{} is different: variable {} not in both files'.format(indent, k, vi))
+
+            # If the variable names are different, there will be lots of values different,
+            # so don't print them all
+            return
 
         # If the difference is in the values, then print out the maximum differences
-        if 'values' in diff['variables'].keys():
+        if diff['variables']['values']:
             for k, v in diff['variables']['values'].items():
                 print('{}{} is different: '.format(indent, k))
-                print('{}max absolute diff {} at position {}'.format(indent*2, v['max_abs_diff'], v['max_abs_diff_pos'][0][0]))
-                print('{}max relative diff {} at position {}'.format(indent*2, v['max_rel_diff'], v['max_rel_diff_pos'][0][0]))
+                print('{}max absolute diff {:.4e} at position {}'.format(indent*2, v['max_abs_diff'], v['max_abs_diff_pos'][0][0]))
+                print('{}max relative diff {:.4e} at position {}'.format(indent*2, v['max_rel_diff'], v['max_rel_diff_pos'][0][0]))
 
     return
 
