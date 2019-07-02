@@ -25,8 +25,15 @@ def main():
     args = parser.parse_args()
 
     # Compare the two Exodus II files
-    if exodiff(args.file1, args.file2, args.rtol, args.atol):
-        print('exodiff: files are identical')
+    diff = exodiff(args.file1, args.file2, args.rtol, args.atol)
+
+    # If diff is not empty, then there are differences
+    if diff['dimensions'] or diff['variables']:
+        printDiff(diff)
+        print('\npyexodiff: files are different')
+
+    else:
+        print('\npyexodiff: files are identical')
 
     return
 
@@ -40,8 +47,13 @@ def exodiff(f1, f2, rtol, atol):
         atol: Absolute tolerance
 
     return:
-        True if files are the same, Exception otherwise
+        dict of differences
     '''
+
+    # Dict of differneces
+    diff = {}
+    diff['dimensions'] = {}
+    diff['variables'] = {}
 
     # Open each of the files for reading
     with Dataset(f1, 'r') as rootgrp1, Dataset(f2, 'r') as rootgrp2:
@@ -63,13 +75,9 @@ def exodiff(f1, f2, rtol, atol):
         for k, v in rootgrp1.dimensions.items():
             if k not in string_lengths:
                 if v.size != rootgrp2.dimensions[k].size:
-                    raise Exception('Exodus files are different')
+                    diff['dimensions'][k] = [v.size, rootgrp2.dimensions[k].size]
 
         # If the dimensions are identical, then check the variables.
-        # Check that both files have the identical keys
-        if len(set(rootgrp1.variables.keys()) - set(rootgrp2.variables.keys())) != 0:
-            raise Exception('Exodus files are different')
-
         for k, v in rootgrp1.variables.items():
             if v[:].dtype.type is np.string_:
                 # String arrays may be different lengths, but the names must be equal
@@ -82,17 +90,64 @@ def exodiff(f1, f2, rtol, atol):
                 arr2 = rootgrp2.variables[k]
                 arr2.set_auto_mask(False)
                 s2 = [b"".join(c).decode("UTF-8").lower() for c in arr2[:]]
-
                 # Check if the arrays of strings are identical
                 if not np.array_equal(np.sort(s1), np.sort(s2)):
-                    raise Exception('Exodus files are different')
+                    diff['variables']['names'] = {}
+                    diff['variables']['names'][k] = np.array(list((set(s1)^set(s2))))
+                    return diff
+
             else:
                 # If the values are floats, then use np.allclose to check if the arrays
                 # are equivalent within the specified tolerances
-                if not np.allclose(v[:], rootgrp2.variables[k][:], rtol = rtol, atol = atol):
-                    raise Exception('Exodus files are different')
+                if k in rootgrp2.variables.keys():
+                    if not np.allclose(v[:], rootgrp2.variables[k][:], rtol = rtol, atol = atol):
+                        abs_diff = np.abs(v[:] - rootgrp2.variables[k][:])
+                        max_abs_diff = np.max(abs_diff)
+                        max_abs_diff_pos = np.where(abs_diff == abs_diff.max())
+                        rel_diff = np.abs(np.divide(v[:] - rootgrp2.variables[k][:], v[:], where=v[:]!=0))
+                        max_rel_diff = np.max(rel_diff)
+                        max_rel_diff_pos = np.where(rel_diff == rel_diff.max())
+                        diff['variables']['values'] = {}
+                        diff['variables']['values'][k] = {}
+                        diff['variables']['values'][k]['max_abs_diff'] = max_abs_diff
+                        diff['variables']['values'][k]['max_abs_diff_pos'] = max_abs_diff_pos
+                        diff['variables']['values'][k]['max_rel_diff'] = max_rel_diff
+                        diff['variables']['values'][k]['max_rel_diff_pos'] = max_rel_diff_pos
 
-    return True
+    return diff
+
+def printDiff(diff):
+    ''' Print out the differences in the dict diff '''
+
+    indent = '    '
+    print('\npyexodiff: difference summary:\n')
+
+    # Print out all differences in the dimensions dict
+    if diff['dimensions']:
+        print('Dimensions:')
+        for k, v in diff['dimensions'].items():
+            print('{}{} is different: file1 size is {}; file2 size is {}'.format(indent, k, v[0], v[1]))
+
+    # Print out summary of differences in the variables dict
+    if diff['variables']:
+        print('Variables')
+
+        # If the difference is in the names, print out all the differences and return
+        if 'names' in diff['variables'].keys():
+            for k, v in diff['variables']['names'].items():
+                if v.dtype.type is np.string_:
+                    for vi in v:
+                        print('{}{} is different: variable {} not in both files'.format(indent, k, vi))
+                        return
+
+        # If the difference is in the values, then print out the maximum differences
+        if 'values' in diff['variables'].keys():
+            for k, v in diff['variables']['values'].items():
+                print('{}{} is different: '.format(indent, k))
+                print('{}max absolute diff {} at position {}'.format(indent*2, v['max_abs_diff'], v['max_abs_diff_pos'][0][0]))
+                print('{}max relative diff {} at position {}'.format(indent*2, v['max_rel_diff'], v['max_rel_diff_pos'][0][0]))
+
+    return
 
 if __name__ == '__main__':
     main()
