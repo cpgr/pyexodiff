@@ -112,6 +112,7 @@ optional arguments:
   -h, --help   show this help message and exit
   --rtol RTOL  Relative tolerance (default: 1e-06)
   --atol ATOL  Absolute tolerance (default: 1e-06)
+  -q, --quiet  Quiet mode (only prints final message) (default: False)
 ```
 
 ## Test suite
