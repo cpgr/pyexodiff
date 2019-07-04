@@ -75,7 +75,7 @@ def exodiff(f1, f2, rtol, atol):
         # Some of the values in this part of the file specify the length of strings.
         # We do not require that these are identical to declare that the two Exodus II
         # files are the same. The string length dimensions that we do not check are:
-        string_lengths = ['len_name', 'len_line']
+        string_lengths = ['len_name', 'len_line', 'len_string']
 
         for k, v in rootgrp1.dimensions.items():
             if k not in string_lengths:
