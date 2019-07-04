@@ -14,6 +14,8 @@ def get_parser():
          help = 'Relative tolerance (default: %(default)s)')
     parser.add_argument('--atol', default = 1e-6, dest = 'atol', type = float,
          help = 'Absolute tolerance (default: %(default)s)')
+    parser.add_argument('-q', '--quiet', default = False, dest = 'quiet', action = 'store_true',
+         help = 'Quiet mode (only prints final message) (default: %(default)s)')
 
     return parser
 
@@ -29,7 +31,8 @@ def main():
 
     # If diff is not empty, then there are differences
     if diff['dimensions'] or diff['variables']['names'] or diff['variables']['values']:
-        printDiff(diff)
+        if not args.quiet:
+            printDiff(diff)
         print('\npyexodiff: files are different')
 
     else:
