@@ -26,3 +26,7 @@ simple_cube_incorrect_poro_tol:
   file2: simple_cube_incorrect_poro.e
   rtol: 1e-3
   atol: 1e-3
+
+simple_cube_diff_nodal_var_order:
+  file1: simple_cube_nodal_props.e
+  file2: simple_cube_reordered_nodal_props.e
