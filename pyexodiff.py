@@ -3,6 +3,7 @@
 import numpy as np
 from netCDF4 import Dataset
 import argparse
+import re
 
 def get_parser():
     ''' Read commandline options and filenames '''
@@ -75,39 +76,75 @@ def exodiff(f1, f2, rtol, atol):
         # Some of the values in this part of the file specify the length of strings.
         # We do not require that these are identical to declare that the two Exodus II
         # files are the same. The string length dimensions that we do not check are:
-        string_lengths = ['len_name', 'len_line']
+        string_lengths = ['len_name', 'len_line', 'len_string']
 
         for k, v in rootgrp1.dimensions.items():
             if k not in string_lengths:
                 if v.size != rootgrp2.dimensions[k].size:
                     diff['dimensions'][k] = [v.size, rootgrp2.dimensions[k].size]
 
-        # Now check the variables.
+        # Now check the variable names (do this before comparing actual values to make
+        # sure that all variable names, sideset names etc are present in both files)
         for k, v in rootgrp1.variables.items():
             if v[:].dtype.type is np.string_:
                 # String arrays may be different lengths, but the names must be equal
                 # when the individual characters are joined
                 # Form an array of strings from array of characters
-                v.set_auto_mask(False)
-                s1 = [b"".join(c).decode("UTF-8").lower() for c in v[:]]
+                s1 = charListtoString(v)
 
                 # Form an array of strings from array of characters for the second file
-                arr2 = rootgrp2.variables[k]
-                arr2.set_auto_mask(False)
-                s2 = [b"".join(c).decode("UTF-8").lower() for c in arr2[:]]
-                # Check if the arrays of strings are identical
+                s2 = charListtoString(rootgrp2.variables[k])
+
+                # Check if the arrays of strings are identical. If not, return early as
+                # the files are clearly different
                 if not np.array_equal(np.sort(s1), np.sort(s2)):
                     diff['variables']['names'][k] = np.array(list((set(s1)^set(s2))))
+                    return diff
 
-            else:
-                # If the values are floats, then use np.allclose to check if the arrays
-                # are equivalent within the specified tolerances
-                if k in rootgrp2.variables.keys():
-                    if not np.allclose(v[:], rootgrp2.variables[k][:], rtol = rtol, atol = atol):
-                        abs_diff = np.abs(v[:] - rootgrp2.variables[k][:])
+        # Now check the actual numerical values. First, though, we must allow for the possibility
+        # that variable numbers are in a different order
+        if 'name_elem_var' in rootgrp1.variables.keys():
+            elem_var_map = variableOrder(rootgrp1.variables['name_elem_var'], rootgrp2.variables['name_elem_var'])
+
+        if 'name_nod_var' in rootgrp1.variables.keys():
+            node_var_map = variableOrder(rootgrp1.variables['name_nod_var'], rootgrp2.variables['name_nod_var'])
+
+        if 'name_sset_var' in rootgrp1.variables.keys():
+            ss_var_map = variableOrder(rootgrp1.variables['name_sset_var'], rootgrp2.variables['name_sset_var'])
+
+        if 'name_nset_var' in rootgrp1.variables.keys():
+            ns_var_map = variableOrder(rootgrp1.variables['name_nset_var'], rootgrp2.variables['name_nset_var'])
+
+        for k, v in rootgrp1.variables.items():
+            # If the values are floats, then use np.allclose to check if the arrays
+            # are equivalent within the specified tolerances
+            if v[:].dtype.type is not np.string_:
+
+                # If the key is a variable value (vals_*_var*), then transform the var number
+                # using the varmap to ensure that the correct variables are being compared
+                k2 = k
+                if k.startswith('vals_elem'):
+                    var1 = re.search("var\d+", k).group()
+                    k2 = re.sub("var\d+", 'var' + str(elem_var_map[int(var1.replace('var', ''))-1]), k)
+
+                if k.startswith('vals_nod'):
+                    var1 = re.search("var\d+", k).group()
+                    k2 = re.sub("var\d+", 'var' + str(node_var_map[int(var1.replace('var', ''))-1]), k)
+
+                if k.startswith('vals_sset'):
+                    var1 = re.search("var\d+", k).group()
+                    k2 = re.sub("var\d+", 'var' + str(ss_var_map[int(var1.replace('var', ''))-1]), k)
+
+                if k.startswith('vals_nset'):
+                    var1 = re.search("var\d+", k).group()
+                    k2 = re.sub("var\d+", 'var' + str(ns_var_map[int(var1.replace('var', ''))-1]), k)
+
+                if k2 in rootgrp2.variables.keys():
+                    if not np.allclose(v[:], rootgrp2.variables[k2][:], rtol = rtol, atol = atol):
+                        abs_diff = np.abs(v[:] - rootgrp2.variables[k2][:])
                         max_abs_diff = np.max(abs_diff)
                         max_abs_diff_pos = np.where(abs_diff == abs_diff.max())
-                        rel_diff = np.abs(np.divide(v[:] - rootgrp2.variables[k][:], v[:], where=v[:]!=0))
+                        rel_diff = np.abs(np.divide(v[:] - rootgrp2.variables[k2][:], v[:], where=v[:]!=0))
                         max_rel_diff = np.max(rel_diff)
                         max_rel_diff_pos = np.where(rel_diff == rel_diff.max())
                         diff['variables']['values'][k] = {}
@@ -152,6 +189,30 @@ def printDiff(diff):
                 print('{}max relative diff {:.4e} at position {}'.format(indent*2, v['max_rel_diff'], v['max_rel_diff_pos'][0][0]))
 
     return
+
+def variableOrder(var_names1, var_names2):
+    '''
+    Return a list of indices for the variable name in var_names2
+    sorted in terms of var_names1
+    '''
+
+    vars1 = charListtoString(var_names1)
+    vars2 = charListtoString(var_names2)
+
+    # Add one for 1-based variable numbering
+    varmap = [vars2.index(v) + 1 for v in vars1]
+
+    return varmap
+
+def charListtoString(charlist):
+    '''
+    Returns a list of strings from a given list of chars
+    '''
+
+    charlist.set_auto_mask(False)
+    stringlist = [b"".join(c).decode("UTF-8", errors='ignore').lower() for c in charlist[:]]
+
+    return stringlist
 
 if __name__ == '__main__':
     main()

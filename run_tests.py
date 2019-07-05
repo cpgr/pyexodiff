@@ -4,6 +4,9 @@ import pytest
 import os
 import subprocess
 import yaml
+from netCDF4 import Dataset
+import numpy as np
+import pyexodiff
 
 # Exception class to throw exception for pytest
 class pyexodiffException(Exception):
@@ -63,7 +66,8 @@ def test_pyexodiff(key):
 
         else:
             # Check the output to make sure that the expected error is given
-            assert(tests[key]['expected_error'] and 'pyexodiff: files are different' in output)
+            assert(tests[key]['expected_error'] in output)
+            assert('pyexodiff: files are different' in output)
 
     return
 
@@ -85,3 +89,42 @@ def exodiff_test(key):
         raise pyexodiffException('pyexodiff failed to run')
 
     return output
+
+
+# Unit tests of specific functionality
+def test_variableOrder():
+
+    # Read in example data
+    rootgrp = Dataset('test/unit/varnames.nc', 'r')
+
+    varnames1 = rootgrp.variables['varnames1']
+    varnames2 = rootgrp.variables['varnames2']
+
+    varmap = pyexodiff.variableOrder(varnames1, varnames2)
+
+    assert varmap == [3, 4, 1, 2]
+
+    # Close the netCDF4 file
+    rootgrp.close()
+
+    return
+
+# Unit tests of specific functionality
+def test_charListtoString():
+
+    # Read in example data
+    rootgrp = Dataset('test/unit/varnames.nc', 'r')
+
+    varnames1 = rootgrp.variables['varnames1']
+    varnames2 = rootgrp.variables['varnames2']
+
+    stringlist1 = pyexodiff.charListtoString(varnames1)
+    assert stringlist1 == ['variable1', 'variable2', 'variable3', 'variable4']
+
+    stringlist2 = pyexodiff.charListtoString(varnames2)
+    assert stringlist2 == ['variable3', 'variable4', 'variable1', 'variable2']
+
+    # Close the netCDF4 file
+    rootgrp.close()
+
+    return

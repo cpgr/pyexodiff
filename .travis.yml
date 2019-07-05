@@ -9,4 +9,4 @@ install:
   - pip install pyYAML
   - pip install netCDF4
 
-script: pytest -v run_tests.py
+script: python -m pytest -v run_tests.py
