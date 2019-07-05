@@ -15,3 +15,14 @@ simple_cube_incorrect_coordx:
   file1: simple_cube.e
   file2: simple_cube_incorrect_coordx.e
   expected_error: coordx is different
+
+simple_cube_incorrect_poro:
+  file1: simple_cube.e
+  file2: simple_cube_incorrect_poro.e
+  expected_error: poro is different
+
+simple_cube_incorrect_poro_tol:
+  file1: simple_cube.e
+  file2: simple_cube_incorrect_poro.e
+  rtol: 1e-3
+  atol: 1e-3

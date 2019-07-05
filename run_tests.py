@@ -38,11 +38,11 @@ for test in tests_files:
             tests[fullpathkey]['filepath'] = filepath
 
             # Add default relative tolerance if not specified in tests file
-            if 'rtol' not in key:
+            if 'rtol' not in tests[fullpathkey].keys():
                 tests[fullpathkey]['rtol'] = 1.0e-6
 
             # Add default absolute tolerance if not specified in tests file
-            if 'atol' not in key:
+            if 'atol' not in tests[fullpathkey].keys():
                 tests[fullpathkey]['atol'] = 1.0e-6
 
 # Run all tests found during search
@@ -83,7 +83,7 @@ def exodiff_test(key):
     f2 = os.path.join(filepath, file2)
 
     try:
-        output = subprocess.check_output(['./pyexodiff.py', f1, f2]).decode('utf-8')
+        output = subprocess.check_output(['./pyexodiff.py', '--atol', str(atol), '--rtol', str(rtol), f1, f2]).decode('utf-8')
 
     except subprocess.CalledProcessError:
         raise pyexodiffException('pyexodiff failed to run')
