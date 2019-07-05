@@ -2,6 +2,10 @@ simple_cube:
   file1: simple_cube.e
   file2: simple_cube.e
 
+simple_cube:
+  file1: simple_cube.e
+  file2: simple_cube_reordered_vars.e
+
 simple_cube_missing_prop:
   file1: simple_cube.e
   file2: simple_cube_missing_prop.e
