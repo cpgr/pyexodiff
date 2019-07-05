@@ -123,21 +123,31 @@ def exodiff(f1, f2, rtol, atol):
                 # If the key is a variable value (vals_*_var*), then transform the var number
                 # using the varmap to ensure that the correct variables are being compared
                 k2 = k
+                varname = k
+
                 if k.startswith('vals_elem'):
                     var1 = re.search("var\d+", k).group()
                     k2 = re.sub("var\d+", 'var' + str(elem_var_map[int(var1.replace('var', ''))-1]), k)
+                    varnames = charListtoString(rootgrp1.variables['name_elem_var'])
+                    varname = varnames[int(var1.replace('var', ''))-1]
 
                 if k.startswith('vals_nod'):
                     var1 = re.search("var\d+", k).group()
                     k2 = re.sub("var\d+", 'var' + str(node_var_map[int(var1.replace('var', ''))-1]), k)
+                    varnames = charListtoString(rootgrp1.variables['name_nod_var'])
+                    varname = varnames[int(var1.replace('var', ''))-1]
 
                 if k.startswith('vals_sset'):
                     var1 = re.search("var\d+", k).group()
                     k2 = re.sub("var\d+", 'var' + str(ss_var_map[int(var1.replace('var', ''))-1]), k)
+                    varnames = charListtoString(rootgrp1.variables['name_sset_var'])
+                    varname = varnames[int(var1.replace('var', ''))-1]
 
                 if k.startswith('vals_nset'):
                     var1 = re.search("var\d+", k).group()
                     k2 = re.sub("var\d+", 'var' + str(ns_var_map[int(var1.replace('var', ''))-1]), k)
+                    varnames = charListtoString(rootgrp1.variables['name_nset_var'])
+                    varname = varnames[int(var1.replace('var', ''))-1]
 
                 if k2 in rootgrp2.variables.keys():
                     if not np.allclose(v[:], rootgrp2.variables[k2][:], rtol = rtol, atol = atol):
@@ -147,11 +157,11 @@ def exodiff(f1, f2, rtol, atol):
                         rel_diff = np.abs(np.divide(v[:] - rootgrp2.variables[k2][:], v[:], where=v[:]!=0))
                         max_rel_diff = np.max(rel_diff)
                         max_rel_diff_pos = np.where(rel_diff == rel_diff.max())
-                        diff['variables']['values'][k] = {}
-                        diff['variables']['values'][k]['max_abs_diff'] = max_abs_diff
-                        diff['variables']['values'][k]['max_abs_diff_pos'] = max_abs_diff_pos
-                        diff['variables']['values'][k]['max_rel_diff'] = max_rel_diff
-                        diff['variables']['values'][k]['max_rel_diff_pos'] = max_rel_diff_pos
+                        diff['variables']['values'][varname] = {}
+                        diff['variables']['values'][varname]['max_abs_diff'] = max_abs_diff
+                        diff['variables']['values'][varname]['max_abs_diff_pos'] = max_abs_diff_pos
+                        diff['variables']['values'][varname]['max_rel_diff'] = max_rel_diff
+                        diff['variables']['values'][varname]['max_rel_diff_pos'] = max_rel_diff_pos
 
     return diff
 

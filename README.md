@@ -12,8 +12,9 @@ whether they are identical. It is intended as a python replacement of the [Exodi
 - numpy
 - netCDF4
 - argparse
+- re
 
-These can be installed using `pip`,
+These can be installed using `pip` if they are not already installed
 ```bash
 pip install numpy
 ```
