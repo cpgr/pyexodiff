@@ -150,6 +150,7 @@ def exodiff(f1, f2, rtol, atol):
                     varname = varnames[int(var1.replace('var', ''))-1]
 
                 if k2 in rootgrp2.variables.keys():
+                    assert v[:].shape == rootgrp2.variables[k2][:].shape, '{}: arrays not the same shape'.format(varname)
                     if not np.allclose(v[:], rootgrp2.variables[k2][:], rtol = rtol, atol = atol):
                         abs_diff = np.abs(v[:] - rootgrp2.variables[k2][:])
                         max_abs_diff = np.max(abs_diff)
