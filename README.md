@@ -1,6 +1,6 @@
 # pyExodiff - pure python exodiff
 
-[![Build Status](https://travis-ci.com/cpgr/pyexodiff.svg?branch=master)](https://travis-ci.com/cpgr/pyexodiff)
+![example workflow](https://github.com/cpgr/pyexodiff/actions/workflows/python-package-conda/badge.svg)
 
 `pyexodiff` compares two [Exodus II](https://github.com/gsjaardema/seacas) files to determine
 whether they are identical. It is intended as a python replacement of the [Exodiff](https://github.com/gsjaardema/seacas) utility, allowing two Exodus II files to be compared without the need to install SEACAS.
