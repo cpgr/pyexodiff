@@ -1,0 +1,7 @@
+name: pyexodus
+channels:
+- defaults
+dependencies:
+- netCDF4
+- pytest
+- pyYAML
