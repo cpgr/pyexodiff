@@ -86,7 +86,7 @@ def exodiff(f1, f2, rtol, atol):
         # Now check the variable names (do this before comparing actual values to make
         # sure that all variable names, sideset names etc are present in both files)
         for k, v in rootgrp1.variables.items():
-            if v[:].dtype.type is np.string_:
+            if np.issubdtype(v[:].dtype, np.bytes_):
                 # String arrays may be different lengths, but the names must be equal
                 # when the individual characters are joined
                 # Form an array of strings from array of characters
@@ -118,7 +118,7 @@ def exodiff(f1, f2, rtol, atol):
         for k, v in rootgrp1.variables.items():
             # If the values are floats, then use np.allclose to check if the arrays
             # are equivalent within the specified tolerances
-            if v[:].dtype.type is not np.string_:
+            if not np.issubdtype(v[:].dtype, np.bytes_):
 
                 # If the key is a variable value (vals_*_var*), then transform the var number
                 # using the varmap to ensure that the correct variables are being compared
