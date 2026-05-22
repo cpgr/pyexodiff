@@ -85,8 +85,12 @@ def exodiff_test(key):
     try:
         output = subprocess.check_output(['./pyexodiff.py', '--atol', str(atol), '--rtol', str(rtol), f1, f2]).decode('utf-8')
 
-    except subprocess.CalledProcessError:
-        raise pyexodiffException('pyexodiff failed to run')
+    except subprocess.CalledProcessError as e:
+        # Exit code 1 is expected when files differ; capture output for assertion checks.
+        # Re-raise only if no output was produced, which indicates a real crash.
+        output = e.output.decode('utf-8')
+        if not output:
+            raise pyexodiffException('pyexodiff failed to run')
 
     return output
 

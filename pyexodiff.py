@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 import numpy as np
 from netCDF4 import Dataset
 import argparse
@@ -35,6 +36,7 @@ def main():
         if not args.quiet:
             printDiff(diff)
         print('\npyexodiff: files are different')
+        sys.exit(1)
 
     else:
         print('\npyexodiff: files are identical')
@@ -80,8 +82,14 @@ def exodiff(f1, f2, rtol, atol):
 
         for k, v in rootgrp1.dimensions.items():
             if k not in string_lengths:
-                if v.size != rootgrp2.dimensions[k].size:
+                if k not in rootgrp2.dimensions:
+                    diff['dimensions'][k] = [v.size, None]
+                elif v.size != rootgrp2.dimensions[k].size:
                     diff['dimensions'][k] = [v.size, rootgrp2.dimensions[k].size]
+
+        for k, v in rootgrp2.dimensions.items():
+            if k not in string_lengths and k not in rootgrp1.dimensions:
+                diff['dimensions'][k] = [None, v.size]
 
         # Now check the variable names (do this before comparing actual values to make
         # sure that all variable names, sideset names etc are present in both files)
@@ -92,6 +100,10 @@ def exodiff(f1, f2, rtol, atol):
                 # Form an array of strings from array of characters
                 s1 = charListtoString(v)
 
+                if k not in rootgrp2.variables:
+                    diff['variables']['names'][k] = np.array(s1)
+                    return diff
+
                 # Form an array of strings from array of characters for the second file
                 s2 = charListtoString(rootgrp2.variables[k])
 
@@ -100,6 +112,12 @@ def exodiff(f1, f2, rtol, atol):
                 if not np.array_equal(np.sort(s1), np.sort(s2)):
                     diff['variables']['names'][k] = np.array(list((set(s1)^set(s2))))
                     return diff
+
+        for k, v in rootgrp2.variables.items():
+            if k not in rootgrp1.variables and np.issubdtype(v[:].dtype, np.bytes_):
+                s2 = charListtoString(v)
+                diff['variables']['names'][k] = np.array(s2)
+                return diff
 
         # Now check the actual numerical values. First, though, we must allow for the possibility
         # that variable numbers are in a different order
@@ -126,26 +144,26 @@ def exodiff(f1, f2, rtol, atol):
                 varname = k
 
                 if k.startswith('vals_elem'):
-                    var1 = re.search("var\d+", k).group()
-                    k2 = re.sub("var\d+", 'var' + str(elem_var_map[int(var1.replace('var', ''))-1]), k)
+                    var1 = re.search(r"var\d+", k).group()
+                    k2 = re.sub(r"var\d+",'var' + str(elem_var_map[int(var1.replace('var', ''))-1]), k)
                     varnames = charListtoString(rootgrp1.variables['name_elem_var'])
                     varname = varnames[int(var1.replace('var', ''))-1]
 
                 if k.startswith('vals_nod'):
-                    var1 = re.search("var\d+", k).group()
-                    k2 = re.sub("var\d+", 'var' + str(node_var_map[int(var1.replace('var', ''))-1]), k)
+                    var1 = re.search(r"var\d+", k).group()
+                    k2 = re.sub(r"var\d+",'var' + str(node_var_map[int(var1.replace('var', ''))-1]), k)
                     varnames = charListtoString(rootgrp1.variables['name_nod_var'])
                     varname = varnames[int(var1.replace('var', ''))-1]
 
                 if k.startswith('vals_sset'):
-                    var1 = re.search("var\d+", k).group()
-                    k2 = re.sub("var\d+", 'var' + str(ss_var_map[int(var1.replace('var', ''))-1]), k)
+                    var1 = re.search(r"var\d+", k).group()
+                    k2 = re.sub(r"var\d+",'var' + str(ss_var_map[int(var1.replace('var', ''))-1]), k)
                     varnames = charListtoString(rootgrp1.variables['name_sset_var'])
                     varname = varnames[int(var1.replace('var', ''))-1]
 
                 if k.startswith('vals_nset'):
-                    var1 = re.search("var\d+", k).group()
-                    k2 = re.sub("var\d+", 'var' + str(ns_var_map[int(var1.replace('var', ''))-1]), k)
+                    var1 = re.search(r"var\d+", k).group()
+                    k2 = re.sub(r"var\d+",'var' + str(ns_var_map[int(var1.replace('var', ''))-1]), k)
                     varnames = charListtoString(rootgrp1.variables['name_nset_var'])
                     varname = varnames[int(var1.replace('var', ''))-1]
 
@@ -164,6 +182,11 @@ def exodiff(f1, f2, rtol, atol):
                         diff['variables']['values'][varname]['max_rel_diff'] = max_rel_diff
                         diff['variables']['values'][varname]['max_rel_diff_pos'] = max_rel_diff_pos
 
+        # Check for numerical variables in file2 not present in file1
+        for k, v in rootgrp2.variables.items():
+            if k not in rootgrp1.variables and not np.issubdtype(v[:].dtype, np.bytes_):
+                diff['variables']['names'][k] = np.array([k])
+
     return diff
 
 def printDiff(diff):
@@ -176,7 +199,12 @@ def printDiff(diff):
     if diff['dimensions']:
         print('Dimensions:')
         for k, v in diff['dimensions'].items():
-            print('{}{} is different: file1 size is {}; file2 size is {}'.format(indent, k, v[0], v[1]))
+            if v[0] is None:
+                print('{}{} is different: not in file1; file2 size is {}'.format(indent, k, v[1]))
+            elif v[1] is None:
+                print('{}{} is different: file1 size is {}; not in file2'.format(indent, k, v[0]))
+            else:
+                print('{}{} is different: file1 size is {}; file2 size is {}'.format(indent, k, v[0], v[1]))
 
     # Print out summary of differences in the variables dict
     if diff['variables']:
